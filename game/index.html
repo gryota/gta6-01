@@ -2,18 +2,136 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Neon Harbor — an open-world crime game</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #150a2c; touch-action: none; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hud { position: fixed; z-index: 5; color: #eef1f5; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.8); user-select: none; pointer-events: none; }
+  #hud-tl { top: 14px; left: 16px; }
+  #health-wrap { width: 210px; height: 14px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); border-radius: 7px; overflow: hidden; }
+  #health-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #2ecc71, #7dff5e); transition: width .2s; }
+  #money { font-size: 22px; font-weight: 700; margin-top: 6px; color: #7dff5e; }
+  #stars { font-size: 26px; letter-spacing: 3px; margin-top: 2px; color: #ffd23e; }
+  #stars .off { color: rgba(255,255,255,.25); }
+  #hud-tr { top: 14px; right: 16px; text-align: right; }
+  #clock { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  #minimap { width: 150px; height: 150px; border: 2px solid rgba(41,230,255,.6); border-radius: 8px; background: #101018; display: block; }
+  #objective { left: 50%; transform: translateX(-50%); bottom: 18px; max-width: 640px; text-align: center; font-size: 17px; font-weight: 600; background: rgba(0,0,0,.55); padding: 8px 16px; border-radius: 8px; }
+  #speed { right: 18px; bottom: 18px; font-size: 30px; font-weight: 800; }
+  #speed small { font-size: 14px; font-weight: 600; color: #9aa3b5; }
+  #toast { left: 50%; top: 22%; transform: translateX(-50%); font-size: 26px; font-weight: 800; color: #ffd23e; text-align: center; opacity: 0; transition: opacity .3s; }
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(10, 5, 25, .72); color: #eef1f5; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .panel { max-width: 620px; width: calc(100% - 40px); max-height: 92vh; overflow-y: auto; background: rgba(20, 14, 40, .94); border: 1px solid rgba(41,230,255,.45); border-radius: 14px; padding: 28px 32px; text-align: center; box-shadow: 0 0 60px rgba(255,46,136,.25); }
+  .panel h1 { margin: 0 0 4px; font-size: 52px; letter-spacing: 6px; color: #29e6ff; text-shadow: 0 0 24px rgba(41,230,255,.8), 0 0 60px rgba(255,46,136,.5); }
+  .panel h2 { margin: 0 0 12px; font-size: 34px; color: #ffd23e; }
+  .panel p { color: #c9cfdd; line-height: 1.55; font-size: 15px; }
+  .panel .controls { text-align: left; display: inline-block; font-size: 14px; line-height: 1.9; color: #c9cfdd; }
+  .panel .controls b { color: #eef1f5; }
+  .panel button { pointer-events: auto; margin: 10px 6px 0; padding: 13px 30px; font-size: 17px; font-weight: 700; border: none; border-radius: 9px; cursor: pointer; background: #29e6ff; color: #0a0a18; }
+  .panel button.secondary { background: transparent; border: 2px solid #29e6ff; color: #29e6ff; }
+  .panel button:hover { filter: brightness(1.15); }
+  .hidden { display: none !important; }
+  /* ---- Touch controls: only on touch devices (body.touch) ---- */
+  #touch-ui { display: none; }
+  body.touch #touch-ui { display: block; }
+  #stick-zone { position: fixed; left: 0; bottom: 0; width: 45vw; height: 45vh; z-index: 8; }
+  #stick-base { position: absolute; left: 26px; bottom: 26px; width: 124px; height: 124px; border-radius: 50%; background: rgba(255,255,255,.10); border: 2px solid rgba(255,255,255,.35); }
+  #stick-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(41,230,255,.55); border: 2px solid rgba(255,255,255,.6); }
+  .touch-btn { position: fixed; z-index: 8; width: 72px; height: 72px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); background: rgba(10,10,25,.55); color: #fff; font-family: system-ui, sans-serif; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; text-align: center; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .touch-btn.active { background: rgba(41,230,255,.6); }
+  #btn-enter { right: 24px; bottom: 118px; background: rgba(255,210,62,.5); color: #1a1a10; }
+  #btn-punch { right: 110px; bottom: 40px; }
+  #btn-run { right: 24px; bottom: 210px; width: 60px; height: 60px; font-size: 13px; }
+  #btn-brake { right: 196px; bottom: 96px; width: 60px; height: 60px; font-size: 13px; }
+  body.touch #speed { bottom: 300px; }
+  body.touch #objective { bottom: 170px; max-width: 46vw; font-size: 14px; }
+  /* Short landscape phones: shrink the title panel so its buttons stay on screen. */
+  @media (max-height: 500px) {
+    .panel { padding: 14px 20px; }
+    .panel h1 { font-size: 32px; letter-spacing: 4px; }
+    .panel h2 { font-size: 24px; }
+    .panel p { font-size: 13px; margin: 6px 0; }
+    .panel .controls { font-size: 12px; line-height: 1.6; }
+    .panel button { padding: 9px 20px; font-size: 15px; margin-top: 6px; }
+  }
 </style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="Neon Harbor: an open-world crime game. Drive, steal cars, outrun the police and finish Rook's jobs."></canvas>
 <p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud" class="hidden">
+  <div id="hud-tl" class="hud">
+    <div id="health-wrap"><div id="health-bar"></div></div>
+    <div id="money">$50</div>
+    <div id="stars"></div>
+  </div>
+  <div id="hud-tr" class="hud">
+    <div id="clock">18:30</div>
+    <canvas id="minimap" width="150" height="150"></canvas>
+  </div>
+  <div id="objective" class="hud"></div>
+  <div id="speed" class="hud hidden"><span id="speed-num">0</span> <small>km/h</small></div>
+  <div id="toast" class="hud"></div>
+</div>
+
+<div id="touch-ui">
+  <div id="stick-zone"><div id="stick-base"><div id="stick-knob"></div></div></div>
+  <div id="btn-enter" class="touch-btn">CAR</div>
+  <div id="btn-punch" class="touch-btn">HIT</div>
+  <div id="btn-run" class="touch-btn">RUN</div>
+  <div id="btn-brake" class="touch-btn">BRAKE</div>
+</div>
+
+<div id="screen-title" class="overlay">
+  <div class="panel">
+    <h1>NEON HARBOR</h1>
+    <p>Rook is back in Neon Harbor — a dusk-lit coastal city of five districts — owing
+    money to the fixer Ms. Vane. Steal cars, outrun the cops, run her jobs, and buy
+    your freedom one mission at a time.</p>
+    <div class="controls">
+      <b>W A S D</b> — walk / drive &nbsp;·&nbsp; <b>Mouse drag</b> — camera<br>
+      <b>Shift</b> — run &nbsp;·&nbsp; <b>E</b> — enter / exit car &nbsp;·&nbsp; <b>F</b> — punch<br>
+      <b>Space</b> — handbrake &nbsp;·&nbsp; <b>P</b> — pause<br>
+      <b>Touch:</b> left stick to move &amp; drive, CAR / HIT / RUN / BRAKE buttons, drag to look
+    </div>
+    <p id="save-line"></p>
+    <button id="btn-new">New Game</button>
+    <button id="btn-continue" class="secondary hidden">Continue</button>
+  </div>
+</div>
+
+<div id="screen-pause" class="overlay hidden">
+  <div class="panel">
+    <h2>Paused</h2>
+    <p>The city waits for no one — except right now.</p>
+    <button id="btn-resume">Resume</button>
+    <button id="btn-quit" class="secondary">Save &amp; Quit to Title</button>
+  </div>
+</div>
+
+<div id="screen-over" class="overlay hidden">
+  <div class="panel">
+    <h2>BUSTED</h2>
+    <p id="over-text">The Neon Harbor police finally caught up with Rook.</p>
+    <button id="btn-retry">Pay the fine &amp; walk free</button>
+    <button id="btn-restart" class="secondary">Restart from the beginning</button>
+  </div>
+</div>
+
+<div id="screen-pass" class="overlay hidden">
+  <div class="panel">
+    <h2 id="pass-title">Mission Passed</h2>
+    <p id="pass-text"></p>
+    <button id="btn-next">Continue</button>
+  </div>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
