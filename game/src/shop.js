@@ -12,20 +12,20 @@
 export const SHOP_ITEMS = [
   {
     id: 'bandage',
-    name: 'Perban',
-    desc: '+50 health. Disimpan di inventory (maks 3). Pakai kapan pun dengan H — satu-satunya cara heal saat wanted > 0.',
+    name: 'Bandage',
+    desc: '+50 health. Stored in inventory (max 3). Use any time with H — the only way to heal while wanted > 0.',
     price: 40,
   },
   {
     id: 'energy',
-    name: 'Minuman energi',
-    desc: 'Langsung +25 health saat dibeli. Tidak disimpan.',
+    name: 'Energy Drink',
+    desc: 'Instant +25 health when bought. Not stored.',
     price: 25,
   },
   {
     id: 'bribe',
-    name: 'Suap polisi',
-    desc: 'Wanted -1 bintang. Hanya bisa dibeli saat wanted 1–2 dan tidak ada polisi dalam radius 30 m.',
+    name: 'Police Bribe',
+    desc: 'Wanted -1 star. Only when wanted is 1–2 and no police within 30 m.',
     price: 200,
   },
 ];
@@ -87,11 +87,11 @@ export function createShop(world, layout) {
   overlay.innerHTML = `
     <div class="shop-panel">
       <h2>GRY MARKET</h2>
-      <p class="shop-sub">Old Town Night Market — perban, minuman energi, dan… jalan pintas.</p>
-      <p class="shop-cash">Uang: <b id="shop-money">$0</b> &nbsp;·&nbsp; Perban: <b id="shop-bandages">×0</b></p>
+      <p class="shop-sub">Old Town Night Market — bandages, energy drinks, and… shortcuts.</p>
+      <p class="shop-cash">Money: <b id="shop-money">$0</b> &nbsp;·&nbsp; Bandages: <b id="shop-bandages">×0</b></p>
       <div id="shop-items"></div>
-      <p class="shop-note">E / Esc — tutup &nbsp;·&nbsp; H — pakai perban &nbsp;·&nbsp; Bukan safe zone: polisi tetap bisa menyerang saat kamu belanja.</p>
-      <button id="shop-close" type="button">Tutup (E)</button>
+      <p class="shop-note">E / Esc — close &nbsp;·&nbsp; H — use bandage &nbsp;·&nbsp; Not a safe zone: police can still attack while you shop.</p>
+      <button id="shop-close" type="button">Close (E)</button>
     </div>`;
   document.body.appendChild(overlay);
   const itemsEl = overlay.querySelector('#shop-items');
@@ -105,7 +105,7 @@ export function createShop(world, layout) {
         <b>${item.name} — $${item.price}</b>
         <span>${item.desc}</span>
       </div>
-      <button type="button" data-item="${item.id}">Beli</button>`;
+      <button type="button" data-item="${item.id}">Buy</button>`;
     row.querySelector('button').addEventListener('click', () => { shop.buy(item.id); });
     itemsEl.appendChild(row);
   }
@@ -156,7 +156,7 @@ export function createShop(world, layout) {
     if (!shop.open && shop.nearStall()) {
       if (!shop.hintShown) {
         shop.hintShown = true;
-        msg('Gry Market — tekan E untuk belanja.');
+        msg('Gry Market — press E to shop.');
       }
     } else if (!shop.nearStall()) {
       shop.hintShown = false;
@@ -169,38 +169,38 @@ export function createShop(world, layout) {
     const p = world.state.player;
 
     if (id === 'bandage' && shop.bandages >= MAX_BANDAGES) {
-      msg('Inventory perban sudah penuh (maks 3).');
+      msg('Bandage inventory full (max 3).');
       return false;
     }
     if (id === 'energy' && p.health >= 100) {
-      msg('Health sudah penuh — jangan buang uang.');
+      msg("Health is full — don't waste money.");
       return false;
     }
     if (id === 'bribe') {
       if (world.state.stars < 1 || world.state.stars > 2) {
-        msg('Suap hanya bisa saat wanted 1–2 bintang.');
+        msg('Bribes only work at wanted level 1–2.');
         return false;
       }
       if (policeWithin(BRIBE_MAX_RADIUS)) {
-        msg('Terlalu dekat dengan polisi — tidak bisa menyuap.');
+        msg("Too close to the police — can't bribe.");
         return false;
       }
     }
     if (p.money < item.price) {
-      msg('Uang tidak cukup.');
+      msg('Not enough money.');
       return false;
     }
 
     p.money -= item.price;
     if (id === 'bandage') {
       shop.bandages += 1;
-      msg(`Perban dibeli — $${item.price}. Perban: ×${shop.bandages}. Tekan H untuk memakai.`);
+      msg(`Bandage bought — $${item.price}. Bandages: ×${shop.bandages}. Press H to use.`);
     } else if (id === 'energy') {
       p.health = Math.min(100, p.health + ENERGY_HEAL);
-      msg(`Minuman energi — $${item.price}. +${ENERGY_HEAL} health.`);
+      msg(`Energy Drink — $${item.price}. +${ENERGY_HEAL} health.`);
     } else if (id === 'bribe') {
       world.state.wanted = Math.max(0, world.state.wanted - 100);
-      msg('Polisi disuap. Wanted -1 bintang.');
+      msg('Police bribed. Wanted -1 star.');
     }
     sound('pickup');
     refreshPanel();
@@ -211,16 +211,16 @@ export function createShop(world, layout) {
   shop.useBandage = function useBandage() {
     const p = world.state.player;
     if (shop.bandages <= 0) {
-      msg('Tidak ada perban. Beli di Gry Market (E).');
+      msg('No bandages. Buy at Gry Market (E).');
       return false;
     }
     if (p.health >= 100) {
-      msg('Health sudah penuh.');
+      msg('Health is full.');
       return false;
     }
     shop.bandages -= 1;
     p.health = Math.min(100, p.health + BANDAGE_HEAL);
-    msg(`Perban dipakai. +${BANDAGE_HEAL} health. Sisa: ×${shop.bandages}.`);
+    msg(`Bandage used. +${BANDAGE_HEAL} health. Left: ×${shop.bandages}.`);
     sound('pickup');
     refreshPanel();
     return true;
