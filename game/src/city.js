@@ -20,7 +20,7 @@ const SIGN_TEXTS = [
   { text: 'DOCK 7', color: '#29e6ff' },
   { text: 'SUNSET MOTEL', color: '#ff9a3d' },
   { text: 'MARINA', color: '#7dff5e' },
-  { text: 'NIGHT MARKET', color: '#ff2e88' },
+  { text: 'GRY MARKET', color: '#ff2e88' },
   { text: 'HARBOR FM', color: '#29e6ff' },
 ];
 

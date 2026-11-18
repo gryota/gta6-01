@@ -124,6 +124,64 @@ export function createRenderer(canvas, layout, random) {
 
   buildCity(scene, layout, random);
 
+  // Gry Market stall (Old Town night market): counter, striped awning and a
+  // glowing pink sign. Positioned by main.js via setShopStall().
+  const stallGroup = new THREE.Group();
+  {
+    const counter = new THREE.Mesh(
+      new THREE.BoxGeometry(3.2, 1.1, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.9 }),
+    );
+    counter.position.y = 0.55;
+    stallGroup.add(counter);
+    const awning = new THREE.Mesh(
+      new THREE.BoxGeometry(3.8, 0.12, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0xff2e88, roughness: 0.8 }),
+    );
+    awning.position.set(0, 2.6, 0);
+    awning.rotation.x = -0.18;
+    stallGroup.add(awning);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.6, metalness: 0.5 });
+    for (const x of [-1.7, 1.7]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.6, 8), poleMat);
+      pole.position.set(x, 1.3, -0.9);
+      stallGroup.add(pole);
+    }
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0xb3541e, roughness: 0.9 });
+    for (const [x, z] of [[-2.2, 0.6], [2.2, -0.4]]) {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), crateMat);
+      crate.position.set(x, 0.45, z);
+      stallGroup.add(crate);
+    }
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512;
+    signCanvas.height = 128;
+    const sg = signCanvas.getContext('2d');
+    sg.font = 'bold 58px system-ui, sans-serif';
+    sg.textAlign = 'center';
+    sg.textBaseline = 'middle';
+    sg.shadowColor = '#ff2e88';
+    sg.shadowBlur = 28;
+    sg.fillStyle = '#ff2e88';
+    sg.fillText('GRY MARKET', 256, 64);
+    sg.shadowBlur = 8;
+    sg.fillStyle = '#ffffff';
+    sg.fillText('GRY MARKET', 256, 64);
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    signTex.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(7.5, 1.9),
+      new THREE.MeshBasicMaterial({ map: signTex, transparent: true }),
+    );
+    sign.position.set(0, 3.6, 0);
+    stallGroup.add(sign);
+    const stallLight = new THREE.PointLight(0xff2e88, 120, 30, 1.8);
+    stallLight.position.set(0, 3, 1.5);
+    stallGroup.add(stallLight);
+  }
+  stallGroup.visible = false;
+  scene.add(stallGroup);
+
   const playerMesh = makePlayerMesh();
   scene.add(playerMesh);
 
@@ -290,7 +348,13 @@ export function createRenderer(canvas, layout, random) {
     renderer.render(scene, camera);
   }
 
-  return { draw, camera, scene, renderer };
+  return {
+    draw, camera, scene, renderer,
+    setShopStall(x, z) {
+      stallGroup.position.set(x, 0, z);
+      stallGroup.visible = true;
+    },
+  };
 }
 
 // ---- Minimap: a 2D top-down canvas. ----
@@ -301,7 +365,7 @@ export function createMinimap(canvas) {
   canvas.height = size;
   function toMap(v) { return ((v + 240) / 480) * size; }
 
-  function draw(state, target) {
+  function draw(state, target, shopPos) {
     ctx.fillStyle = '#101018';
     ctx.fillRect(0, 0, size, size);
     // Sea.
@@ -327,6 +391,13 @@ export function createMinimap(canvas) {
       ctx.beginPath();
       ctx.arc(toMap(target.x), toMap(target.z), pulse, 0, Math.PI * 2);
       ctx.fill();
+    }
+    // Gry Market stall: a green $ marker.
+    if (shopPos) {
+      ctx.fillStyle = '#7dff5e';
+      ctx.font = 'bold 15px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('$', toMap(shopPos.x), toMap(shopPos.z) + 5);
     }
     // Cars: white dots, police red/blue.
     for (const car of state.cars) {

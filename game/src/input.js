@@ -28,7 +28,7 @@ export function isTouchDevice() {
 
 export function createInput(canvas) {
   const keys = { up: false, down: false, left: false, right: false, run: false, brake: false };
-  const pressed = { enter: false, punch: false, pause: false, confirm: false };
+  const pressed = { enter: false, punch: false, pause: false, confirm: false, heal: false };
   const camDelta = { x: 0, y: 0 };
 
   // Virtual joystick state (touch): -1..1 on each axis. Forward is -y.
@@ -43,6 +43,7 @@ export function createInput(canvas) {
     if (name) { keys[name] = true; event.preventDefault(); return; }
     if (event.code === 'KeyE') press('enter');
     else if (event.code === 'KeyF') press('punch');
+    else if (event.code === 'KeyH') press('heal');
     else if (event.code === 'KeyP' || event.code === 'Escape') press('pause');
     else if (event.code === 'Enter') press('confirm');
   }

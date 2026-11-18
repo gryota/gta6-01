@@ -13,6 +13,7 @@
   #health-wrap { width: 210px; height: 14px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); border-radius: 7px; overflow: hidden; }
   #health-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #2ecc71, #7dff5e); transition: width .2s; }
   #money { font-size: 22px; font-weight: 700; margin-top: 6px; color: #7dff5e; }
+  #bandages { font-size: 14px; font-weight: 600; margin-top: 2px; color: #ffd23e; }
   #stars { font-size: 26px; letter-spacing: 3px; margin-top: 2px; color: #ffd23e; }
   #stars .off { color: rgba(255,255,255,.25); }
   #hud-tr { top: 14px; right: 16px; text-align: right; }
@@ -33,6 +34,20 @@
   .panel button.secondary { background: transparent; border: 2px solid #29e6ff; color: #29e6ff; }
   .panel button:hover { filter: brightness(1.15); }
   .hidden { display: none !important; }
+  /* ---- Gry Market shop overlay ---- */
+  #shop-overlay { position: fixed; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; background: rgba(10, 5, 25, .55); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .shop-panel { width: calc(100% - 40px); max-width: 520px; background: rgba(20, 14, 40, .97); border: 1px solid rgba(255,46,136,.6); border-radius: 14px; padding: 22px 26px; color: #eef1f5; box-shadow: 0 0 60px rgba(255,46,136,.3); }
+  .shop-panel h2 { margin: 0 0 4px; font-size: 30px; letter-spacing: 4px; color: #ff2e88; text-shadow: 0 0 18px rgba(255,46,136,.8); }
+  .shop-sub { margin: 0 0 10px; color: #c9cfdd; font-size: 14px; }
+  .shop-cash { margin: 0 0 12px; font-size: 16px; color: #7dff5e; }
+  .shop-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.15); }
+  .shop-item-info { flex: 1; text-align: left; }
+  .shop-item-info b { display: block; font-size: 16px; color: #ffd23e; }
+  .shop-item-info span { font-size: 13px; color: #c9cfdd; line-height: 1.4; }
+  .shop-item button, .shop-panel > button { padding: 10px 22px; font-size: 16px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; background: #29e6ff; color: #0a0a18; }
+  .shop-item button:hover, .shop-panel > button:hover { filter: brightness(1.15); }
+  .shop-note { margin: 12px 0 0; font-size: 13px; color: #9aa3b5; }
+  .shop-panel > button { margin-top: 14px; background: transparent; border: 2px solid #29e6ff; color: #29e6ff; }
   /* ---- Touch controls: only on touch devices (body.touch) ---- */
   #touch-ui { display: none; }
   body.touch #touch-ui { display: block; }
@@ -69,6 +84,7 @@
   <div id="hud-tl" class="hud">
     <div id="health-wrap"><div id="health-bar"></div></div>
     <div id="money">$50</div>
+    <div id="bandages">Bandages ×0 · H — use</div>
     <div id="stars"></div>
   </div>
   <div id="hud-tr" class="hud">
@@ -96,8 +112,8 @@
     your freedom one mission at a time.</p>
     <div class="controls">
       <b>W A S D</b> — walk / drive &nbsp;·&nbsp; <b>Mouse drag</b> — camera<br>
-      <b>Shift</b> — run &nbsp;·&nbsp; <b>E</b> — enter / exit car &nbsp;·&nbsp; <b>F</b> — punch<br>
-      <b>Space</b> — handbrake &nbsp;·&nbsp; <b>P</b> — pause<br>
+      <b>Shift</b> — run &nbsp;·&nbsp; <b>E</b> — enter / exit car, open Gry Market near its stall &nbsp;·&nbsp; <b>F</b> — punch<br>
+      <b>H</b> — use a bandage &nbsp;·&nbsp; <b>Space</b> — handbrake &nbsp;·&nbsp; <b>P</b> — pause<br>
       <b>Touch:</b> left stick to move &amp; drive, CAR / HIT / RUN / BRAKE buttons, drag to look
     </div>
     <p id="save-line"></p>

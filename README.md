@@ -21,8 +21,9 @@ on touch devices.
 | W A S D / arrows | Walk / drive |
 | Mouse drag | Orbit camera |
 | Shift | Run |
-| E | Enter / exit car (steal parked or traffic cars) |
+| E | Enter / exit car (steal parked or traffic cars); open Gry Market near its stall |
 | F | Punch |
+| H | Use a bandage (+50 health) |
 | Space | Handbrake |
 | P / Esc | Pause |
 
@@ -42,8 +43,13 @@ on touch devices.
   The Vane Job — with briefing, objective markers, a beacon and minimap target, and
   cash rewards. Mission Passed screen after each one.
 - **Combat**: melee punches on foot, ramming in a car; police fight back.
-- **HUD**: health, cash, wanted stars, speed, city clock, mission objective, and a
-  live 2D minimap.
+- **Gry Market**: a supply stall in the Old Town night market (walk up, press E).
+  Bandages $40 (carry up to 3, press H to heal — the only heal while wanted),
+  energy drinks $25 (+25 health), and police bribes $200 (-1 star, only at
+  1–2 stars with no cop within 30 m). Not a safe zone: the police keep chasing
+  while you shop. Bandage stock is saved with the game.
+- **HUD**: health, cash, bandages, wanted stars, speed, city clock, mission objective, and a
+  live 2D minimap (with a green $ marker for Gry Market).
 - **Save**: money, mission progress and best wanted level persist in localStorage
   (Continue on the title screen).
 - **Sound**: everything synthesized with WebAudio — engine hum, police siren,

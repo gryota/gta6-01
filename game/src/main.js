@@ -11,6 +11,7 @@ import { generateLayout } from './city.js';
 import { createInput } from './input.js';
 import { createAudio } from './audio.js';
 import { createMinimap, createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+import { createShop } from './shop.js';
 import { stageShot } from './shots.js';
 
 const MAX_FRAME = 0.25;
@@ -29,10 +30,13 @@ const renderer = createRenderer(canvas, layout, random);
 const minimap = createMinimap(document.getElementById('minimap'));
 const input = createInput(canvas);
 const audio = createAudio();
+const shop = createShop(world, layout);
+renderer.setShopStall(shop.stall.x, shop.stall.z);
 
 const hud = document.getElementById('hud');
 const healthBar = document.getElementById('health-bar');
 const moneyEl = document.getElementById('money');
+const bandagesEl = document.getElementById('bandages');
 const starsEl = document.getElementById('stars');
 const clockEl = document.getElementById('clock');
 const objectiveEl = document.getElementById('objective');
@@ -66,6 +70,7 @@ function writeSave() {
       missionIndex: world.state.missionIndex,
       bestWanted: world.state.bestWanted,
       bestMoney: world.state.bestMoney,
+      bandages: shop.bandages,
     }));
   } catch {
     // Storage can be off: the save then lasts this visit only.
@@ -95,6 +100,7 @@ function updateHud() {
     ? 'linear-gradient(90deg,#2ecc71,#7dff5e)'
     : p.health > 25 ? 'linear-gradient(90deg,#e67e22,#ffd23e)' : 'linear-gradient(90deg,#e74c3c,#ff6b6b)';
   moneyEl.textContent = `$${Math.round(p.money)}`;
+  bandagesEl.textContent = `Bandages ×${shop.bandages} · H — use`;
   let stars = '';
   for (let i = 0; i < 5; i += 1) {
     stars += i < s.stars ? '★' : '<span class="off">★</span>';
@@ -110,7 +116,7 @@ function updateHud() {
   } else {
     speedEl.classList.add('hidden');
   }
-  minimap.draw(s, world.missionTarget());
+  minimap.draw(s, world.missionTarget(), shop.stall);
 }
 
 function drainWorldEvents() {
@@ -168,7 +174,10 @@ function runGame() {
   function announce(message) { status.textContent = message; }
 
   function startGame(fromSave) {
-    world.reset(fromSave ? readSave() : null);
+    const sv = fromSave ? readSave() : null;
+    world.reset(sv);
+    shop.load(sv ? sv.bandages : 0);
+    shop.close();
     world.state.cinematic = null;
     accumulator = 0;
     screen = SCREEN_PLAY;
@@ -179,6 +188,7 @@ function runGame() {
   }
 
   function quitToTitle() {
+    shop.close();
     writeSave();
     screen = SCREEN_TITLE;
     showScreen('title');
@@ -242,12 +252,29 @@ function runGame() {
   function readControls() {
     const axes = input.axes();
     const cam = input.takeCamDelta();
+    const enterPressed = input.takePressed('enter');
+    if (input.takePressed('heal')) shop.useBandage();
+    const idle = {
+      ax: 0, ay: 0, run: false, brake: false,
+      enterPressed: false, punchPressed: false, camDX: cam.x, camDY: cam.y,
+    };
+    // Shop open: E closes it; the player stands still, but the world keeps
+    // stepping — the shop is not a safe zone.
+    if (shop.open) {
+      if (enterPressed) shop.close();
+      return idle;
+    }
+    // On foot by the stall: E opens the shop instead of entering a car.
+    if (enterPressed && world.state.player.onFoot && shop.nearStall()) {
+      shop.openShop();
+      return idle;
+    }
     return {
       ax: axes.x,
       ay: axes.y,
       run: input.run(),
       brake: input.brake(),
-      enterPressed: input.takePressed('enter'),
+      enterPressed,
       punchPressed: input.takePressed('punch'),
       camDX: cam.x,
       camDY: cam.y,
@@ -260,7 +287,10 @@ function runGame() {
     last = now;
 
     if (input.takePressed('pause')) {
-      if (screen === SCREEN_PLAY) {
+      if (shop.open) {
+        // Esc closes the shop first, it does not pause the game.
+        shop.close();
+      } else if (screen === SCREEN_PLAY) {
         screen = SCREEN_PAUSED;
         showScreen('pause');
         writeSave();
@@ -289,6 +319,7 @@ function runGame() {
     if (screen === SCREEN_PLAY) {
       const wasMission = world.state.missionIndex;
       const wasDone = world.state.missionDone;
+      shop.update();
       while (accumulator >= STEP) {
         world.step(STEP, readControls());
         accumulator -= STEP;
@@ -296,8 +327,10 @@ function runGame() {
       }
       drainWorldEvents();
       if (world.state.busted) {
+        shop.close();
         showBusted();
       } else if (world.state.missionIndex !== wasMission || (world.state.missionDone && !wasDone)) {
+        shop.close();
         showMissionPassed();
       }
       // Sound follows the game.
@@ -316,7 +349,7 @@ function runGame() {
 
   // Debug handle for automated play-testing (read-only state plus the world's own
   // staging helpers); the game never reads it.
-  window.__game = { world, input };
+  window.__game = { world, input, shop };
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && screen === SCREEN_PLAY) {
       screen = SCREEN_PAUSED;
