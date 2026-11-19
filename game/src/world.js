@@ -264,16 +264,20 @@ export function createWorld(random, layout) {
       driver.kind = 'driver';
       driver.flee = 1;
       car.driver = false;
-      car.owned = true;
-      addWanted(WANTED.steal);
-      msg('Car stolen! The law is coming.');
-      sound('pickup');
+      if (!car.owned) {
+        car.owned = true;
+        addWanted(WANTED.steal);
+        msg('Car stolen! The law is coming.');
+        sound('pickup');
+      }
     } else if (car.kind === 'parked') {
       // A parked car is still someone else's car.
-      car.owned = true;
-      addWanted(WANTED.steal);
-      msg('Car stolen! The law is coming.');
-      sound('pickup');
+      if (!car.owned) {
+        car.owned = true;
+        addWanted(WANTED.steal);
+        msg('Car stolen! The law is coming.');
+        sound('pickup');
+      }
     }
     state.playerCar = car;
     car.kind = 'player';
