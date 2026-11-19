@@ -329,7 +329,7 @@ export function createWorld(random, layout) {
   }
 
   function respawn() {
-    const fine = Math.min(player.money, BUSTED_FINE);
+    const fine = Math.min(Math.max(0, player.money), BUSTED_FINE);
     player.money -= fine;
     player.health = PLAYER.health;
     player.x = SAFEHOUSE.x;
@@ -760,7 +760,7 @@ export function createWorld(random, layout) {
     player.z = SAFEHOUSE.z;
     player.heading = 0;
     player.health = PLAYER.health;
-    player.money = save ? save.money : 50;
+    player.money = save && Number.isFinite(save.money) ? Math.max(0, save.money) : 50;
     player.onFoot = true;
     player.walkPhase = 0;
     player.punchTimer = 0;
@@ -772,7 +772,7 @@ export function createWorld(random, layout) {
     state.time = 0;
     state.camYaw = Math.PI;
     state.camPitch = 0.42;
-    state.missionIndex = save ? save.missionIndex : 0;
+    state.missionIndex = save && Number.isInteger(save.missionIndex) ? Math.min(4, Math.max(0, save.missionIndex)) : 0;
     state.missionStage = 0;
     state.missionTimer = 0;
     state.missionDone = state.missionIndex >= MISSIONS.length;
@@ -782,7 +782,7 @@ export function createWorld(random, layout) {
     state.crimeCooldown = 0;
     state.policeTimer = 0;
     state.copTimer = 0;
-    state.bestWanted = save ? save.bestWanted || 0 : 0;
+    state.bestWanted = save && Number.isInteger(save.bestWanted) ? Math.min(5, Math.max(0, save.bestWanted)) : 0;
     state.bestMoney = Math.max(save ? save.bestMoney || 0 : 0, player.money);
     state.messages.length = 0;
     state.sounds.length = 0;
