@@ -62,6 +62,7 @@ export function createWorld(random, layout) {
   function makeCar(x, z, heading, kind, color) {
     const car = {
       id: carId++, x, z, heading, speed: 0, kind, color,
+      owned: false,
       driver: kind === 'traffic',
       node: null, prev: null, cruise: 9 + random() * 4,
       hitCooldown: 0, stuck: 0,
@@ -263,11 +264,13 @@ export function createWorld(random, layout) {
       driver.kind = 'driver';
       driver.flee = 1;
       car.driver = false;
+      car.owned = true;
       addWanted(WANTED.steal);
       msg('Car stolen! The law is coming.');
       sound('pickup');
     } else if (car.kind === 'parked') {
       // A parked car is still someone else's car.
+      car.owned = true;
       addWanted(WANTED.steal);
       msg('Car stolen! The law is coming.');
       sound('pickup');
