@@ -694,8 +694,15 @@ export function createWorld(random, layout) {
     if (stage.key === 'escape') {
       const target = stage.target;
       if (dist2(player.x, player.z, target.x, target.z) < 8 * 8) {
-        sound('pickup');
-        completeStage();
+        if (state.wanted === 0) {
+          sound('pickup');
+          completeStage();
+        } else if (!state.escapeHintShown) {
+          state.escapeHintShown = true;
+          msg('Lose the heat first — get wanted to zero, then reach the hideout.');
+        }
+      } else {
+        state.escapeHintShown = false;
       }
     }
   }
@@ -786,6 +793,7 @@ export function createWorld(random, layout) {
     state.crimeCooldown = 0;
     state.policeTimer = 0;
     state.copTimer = 0;
+    state.escapeHintShown = false;
     state.bestWanted = save && Number.isInteger(save.bestWanted) ? Math.min(5, Math.max(0, save.bestWanted)) : 0;
     state.bestMoney = Math.max(save ? save.bestMoney || 0 : 0, player.money);
     state.messages.length = 0;
