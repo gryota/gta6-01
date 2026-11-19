@@ -168,6 +168,10 @@ export function createShop(world, layout) {
     if (!item) return false;
     const p = world.state.player;
 
+    if (!Number.isFinite(p.money) || p.money < 0) {
+      msg('Not enough money.');
+      return false;
+    }
     if (id === 'bandage' && shop.bandages >= MAX_BANDAGES) {
       msg('Bandage inventory full (max 3).');
       return false;
