@@ -1,5 +1,9 @@
 # Neon Harbor
 
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/gryota/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/gryota/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+
 An original open-world crime game for the make.fun **gta6-01** bounty — "in the spirit
 of GTA 6" with a world that is entirely its own: the dusk-lit coastal city of Neon
 Harbor, five districts (Portside docks, Downtown towers, Old Town, Beachfront, and
@@ -61,3 +65,7 @@ Every name, character, district, vehicle, story beat, texture, sound and line of
 is original work made for this bounty. Nothing is taken from Rockstar Games, Grand
 Theft Auto, or any other commercial game. three.js r170 is vendored under
 `game/vendor/three.module.min.js` (MIT).
+
+---
+
+<sub>Entered on [make.fun](https://make.fun/?utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>
