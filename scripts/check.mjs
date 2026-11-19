@@ -1,159 +1,96 @@
-// scripts/check.mjs — one-command verification gate for Neon Harbor (plan 001).
-// Stdlib only. Run from the repo root: `node scripts/check.mjs`.
-//
-// Steps (in order, fail fast):
-//   1. syntax  — `node --check` on every file in game/src/*.js
-//   2. smoke   — serve game/ (serve.ts, port 8080), fetch / and assert
-//                HTTP 200 and that the body contains "NEON HARBOR"
-//   3. kit check — `cli/makefun.mjs check --kit . --repo <this repo>`
-// Prints one `PASS: <step>` line per step and exits 0 only if all pass;
-// on failure prints `FAIL: <step> — <reason>` and exits 1.
-//
-// Notes:
-// - Paths resolve from this file's location, so the script works from any
-//   cwd, in the main repo or in a worktree.
-// - The kit lives outside the repo; its path defaults to the known
-//   location and can be overridden with MAKEFUN_KIT_DIR.
-// - The smoke fetch uses node:http directly (no proxy env vars involved).
+// Neon Harbor — scripts/check.mjs
+// Pre-submit regression runner: runs the Node test suite, then checks the
+// repo itself — no forbidden commercial-game words, the vendored three.js
+// build is the exact expected size, screenshots exist and fit the caps,
+// and the claim file names the right wallet. Exits non-zero on any failure.
 
-import { execFile, spawn } from 'node:child_process';
-import { readdir } from 'node:fs/promises';
-import { get as httpGet } from 'node:http';
-import { dirname, join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const NODE = process.execPath;
-const KIT_DIR = process.env.MAKEFUN_KIT_DIR
-  || '/home/hatch/workspace/makefun/kits/gta6-01-kit/gta6-01-kit';
-const PORT = 8080;
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const failures = [];
+let checks = 0;
 
-class StepError extends Error {
-  constructor(step, message, detail = '') {
-    super(message);
-    this.step = step;
-    this.detail = detail;
-  }
+function check(name, ok, detail = '') {
+  checks++;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`);
+  if (!ok) failures.push(name);
 }
 
-function run(cmd, args, opts = {}) {
-  return new Promise((resolvePromise, reject) => {
-    execFile(cmd, args, { timeout: 120000, ...opts }, (err, stdout, stderr) => {
-      if (err) {
-        const error = new Error(err.message);
-        error.stdout = stdout;
-        error.stderr = stderr;
-        reject(error);
-      } else {
-        resolvePromise({ stdout, stderr });
-      }
-    });
-  });
-}
-
-function fetchBody(url, timeoutMs = 5000) {
-  return new Promise((resolvePromise, reject) => {
-    const req = httpGet(url, { timeout: timeoutMs }, (res) => {
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => resolvePromise({ status: res.statusCode, body }));
-    });
-    req.on('timeout', () => req.destroy(new Error('request timed out')));
-    req.on('error', reject);
-  });
-}
-
-async function stepSyntax() {
-  const files = (await readdir(join(ROOT, 'game', 'src')))
-    .filter((f) => f.endsWith('.js'))
-    .sort();
-  if (files.length === 0) {
-    throw new StepError('syntax', 'no .js files found in game/src');
-  }
-  for (const file of files) {
-    try {
-      await run(NODE, ['--check', join(ROOT, 'game', 'src', file)]);
-    } catch (err) {
-      throw new StepError('syntax', `node --check failed for game/src/${file}`,
-        (err.stderr || err.stdout || err.message).trim());
-    }
-  }
-}
-
-async function stepSmoke() {
-  const server = spawn(NODE, ['serve.ts'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
-  let stderr = '';
-  server.stderr.on('data', (chunk) => { stderr += chunk; });
-  const exited = new Promise((resolvePromise) => {
-    server.on('exit', (code) => resolvePromise(code));
-  });
-  try {
-    const deadline = Date.now() + 10000;
-    let lastErr = null;
-    let up = false;
-    while (Date.now() < deadline) {
-      const exitCode = await Promise.race([
-        exited.then((code) => ({ exited: true, code })),
-        new Promise((r) => { setTimeout(() => r({ exited: false }), 250); }),
-      ]);
-      if (exitCode.exited) {
-        throw new StepError('smoke',
-          `serve.ts exited early with code ${exitCode.code}`, stderr.trim());
-      }
-      try {
-        await fetchBody(`http://127.0.0.1:${PORT}/`);
-        up = true;
-        break;
-      } catch (err) {
-        lastErr = err;
-      }
-    }
-    if (!up) {
-      throw new StepError('smoke', 'server did not respond within 10 s',
-        lastErr ? lastErr.message : stderr.trim());
-    }
-    const { status, body } = await fetchBody(`http://127.0.0.1:${PORT}/`);
-    if (status !== 200) {
-      throw new StepError('smoke', `expected HTTP 200, got ${status}`);
-    }
-    if (!body.includes('NEON HARBOR')) {
-      throw new StepError('smoke', 'page body does not contain "NEON HARBOR"');
-    }
-  } finally {
-    server.kill('SIGTERM');
-    await Promise.race([
-      exited,
-      new Promise((r) => { setTimeout(r, 2000); }),
-    ]);
-    if (server.exitCode === null) server.kill('SIGKILL');
-  }
-}
-
-async function stepKitCheck() {
-  try {
-    await run(NODE, ['cli/makefun.mjs', 'check', '--kit', '.', '--repo', ROOT],
-      { cwd: KIT_DIR });
-  } catch (err) {
-    throw new StepError('kit check',
-      'cli/makefun.mjs check failed',
-      (err.stdout || err.stderr || err.message).trim());
-  }
-}
-
+// 1. Node test suite.
 try {
-  await stepSyntax();
-  console.log('PASS: syntax');
-  await stepSmoke();
-  console.log('PASS: smoke');
-  await stepKitCheck();
-  console.log('PASS: kit check');
+  const testFiles = readdirSync(join(root, 'tests')).filter((f) => f.endsWith('.test.mjs')).map((f) => join('tests', f));
+  execFileSync(process.execPath, ['--test', ...testFiles], { cwd: root, stdio: 'pipe' });
+  check('node test suite', true);
 } catch (err) {
-  if (err instanceof StepError) {
-    console.error(`FAIL: ${err.step} — ${err.message}`);
-    if (err.detail) console.error(err.detail);
-  } else {
-    console.error(`FAIL: ${err.message}`);
+  check('node test suite', false, String(err.stdout || err.message).split('\n').slice(-3).join(' '));
+}
+
+// 2. Forbidden commercial-game words anywhere in the entry.
+const FORBIDDEN = [/\bGTA\b/, /Rockstar/, /Vice City/, /Los Santos/, /San Andreas/, /Liberty City/];
+const textFiles = [];
+function walk(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== 'vendor' && entry.name !== 'node_modules') walk(p);
+    } else if (/\.(js|mjs|ts|html|md|json)$/.test(entry.name)) {
+      textFiles.push(p);
+    }
   }
-  process.exitCode = 1;
+}
+walk(join(root, 'game'));
+for (const f of ['README.md', 'main.ts', 'serve.ts']) textFiles.push(join(root, f));
+let hits = [];
+for (const f of textFiles) {
+  const text = readFileSync(f, 'utf8');
+  for (const re of FORBIDDEN) {
+    if (re.test(text)) hits.push(`${f.replace(root + '/', '')}: ${re}`);
+  }
+}
+check('no forbidden commercial-game words', hits.length === 0, hits.join('; '));
+
+// 3. Vendored three.js is the exact expected build.
+const three = join(root, 'game/vendor/three.module.min.js');
+check(
+  'three.module.min.js is 691648 bytes',
+  existsSync(three) && statSync(three).size === 691648,
+  existsSync(three) ? `${statSync(three).size} bytes` : 'missing'
+);
+
+// 4. Screenshots: 3-4 files, each under 256 KiB.
+const shotsDir = join(root, 'screenshots');
+const shots = existsSync(shotsDir) ? readdirSync(shotsDir).filter((f) => !f.startsWith('.')) : [];
+const shotsOk = shots.length >= 3 && shots.length <= 4 && shots.every((f) => statSync(join(shotsDir, f)).size <= 262144);
+check('screenshots 3-4 files, each <= 256 KiB', shotsOk, `${shots.length} files`);
+
+// 5. Claim file names the payout wallet.
+const ownerPath = join(root, '.makefun/owner.json');
+let ownerOk = false;
+try {
+  const owner = JSON.parse(readFileSync(ownerPath, 'utf8'));
+  ownerOk = owner.wallet === 'EM5vCYNjPjRXeRdZdBXrLosLGRikAcETqdwN7BJA7Luy';
+} catch {
+  ownerOk = false;
+}
+check('.makefun/owner.json wallet', ownerOk);
+
+// 6. Dossier program runs and writes a dossier.
+try {
+  execFileSync(process.execPath, ['main.ts'], {
+    cwd: root,
+    env: { ...process.env, MAKEFUN_OUTPUT_DIR: join(root, 'out-check') },
+    stdio: 'pipe',
+  });
+  check('main.ts writes out-check/dossier.json', existsSync(join(root, 'out-check/dossier.json')));
+} catch (err) {
+  check('main.ts writes out-check/dossier.json', false, String(err.message).split('\n')[0]);
+}
+
+console.log(`\n${checks - failures.length}/${checks} checks passed.`);
+if (failures.length > 0) {
+  console.log(`Failures: ${failures.join(', ')}`);
+  process.exit(1);
 }

@@ -1,71 +1,69 @@
-# Neon Harbor
-
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/gryota/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/gryota/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-An original open-world crime game for the make.fun **gta6-01** bounty — "in the spirit
-of GTA 6" with a world that is entirely its own: the dusk-lit coastal city of Neon
-Harbor, five districts (Portside docks, Downtown towers, Old Town, Beachfront, and
-Industrial), and the getaway driver Rook, who owes money to the fixer Ms. Vane.
+# Neon Harbor
+
+An original open-world crime game for the make.fun **gta6-01** bounty: a neon port city of five districts, explored on foot and by car, with traffic, pedestrians, stealable cars, a five-star wanted system with pursuing police, four story missions, melee combat, a HUD with minimap, a start screen, saves, and a night-market shop — all running offline in the browser from static files.
+
+## Story
+
+Rook, a getaway driver, is back in Neon Harbor and owes the fixer **Ms. Vane**. Four jobs pay the debt:
+
+1. **First Gear** — steal a car and bring it to the garage ($250)
+2. **Harbor Run** — run a package from Portside to Downtown; blown if wanted hits 5 stars ($400)
+3. **Night Shift** — ferry a passenger to the pier in 90 seconds ($500)
+4. **The Vane Job** — meet the crew, lose the cops, and slip into the hideout with a clean slate ($800)
 
 ## Play
 
 ```sh
-node serve.ts
-# open http://localhost:8080
+node serve.ts        # then open http://localhost:8080
 ```
 
-Desktop (keyboard + mouse) and touch phones are both supported — the touch controls
-(virtual joystick, CAR / HIT / RUN / BRAKE buttons, drag to look) appear automatically
-on touch devices.
+Or open `game/index.html` from any static server. No network requests: three.js is vendored under `game/vendor/`, all sound is synthesized with WebAudio.
 
-| Input | Action |
+## Controls
+
+| Key | Action |
 | --- | --- |
-| W A S D / arrows | Walk / drive |
+| WASD / arrows | Walk & drive |
 | Mouse drag | Orbit camera |
 | Shift | Run |
-| E | Enter / exit car (steal parked or traffic cars); open Gry Market near its stall |
-| F | Punch |
-| H | Use a bandage (+50 health) |
+| E | Enter / steal car, open Gry Market |
+| F / click | Punch |
 | Space | Handbrake |
-| P / Esc | Pause |
+| H | Use bandage |
+| M | Mute |
+| Esc | Pause |
 
-## Features
+Touch devices get a virtual joystick plus CAR / HIT / RUN / BRAKE buttons.
 
-- **Open city**: procedural buildings with lit windows, neon signs, palms, docks with
-  cranes, beach and sea, dusk sky and fog.
-- **On foot and driving**: third-person walking with run, arcade car handling with
-  handbrake drifts, chase camera.
-- **Traffic and pedestrians**: AI cars follow the road grid and slow for the car
-  ahead; pedestrians stroll the sidewalks.
-- **Steal cars**: walk up to a parked or traffic car and press E — the driver bails
-  out and the law notices.
-- **Wanted level 1–5 stars**: police cruisers chase and ram you; foot cops get out
-  and chase you down on foot. Lay low and the heat fades.
-- **Four story missions**: First Gear, Harbor Run, Night Shift (timed fare), and
-  The Vane Job — with briefing, objective markers, a beacon and minimap target, and
-  cash rewards. Mission Passed screen after each one.
-- **Combat**: melee punches on foot, ramming in a car; police fight back.
-- **Gry Market**: a supply stall in the Old Town night market (walk up, press E).
-  Bandages $40 (carry up to 3, press H to heal — the only heal while wanted),
-  energy drinks $25 (+25 health), and police bribes $200 (-1 star, only at
-  1–2 stars with no cop within 30 m). Not a safe zone: the police keep chasing
-  while you shop. Bandage stock is saved with the game.
-- **HUD**: health, cash, bandages, wanted stars, speed, city clock, mission objective, and a
-  live 2D minimap (with a green $ marker for Gry Market).
-- **Save**: money, mission progress and best wanted level persist in localStorage
-  (Continue on the title screen).
-- **Sound**: everything synthesized with WebAudio — engine hum, police siren,
-  pickup chimes, crashes, punches and an ambient pad. No audio files.
+## Gry Market
+
+A night-market stall in Old Town sells bandages ($40, carry up to 3, press H to heal +50), energy drinks ($25, +25 health now) and police bribes ($200, −1 star at 1–2 stars when no police are within 30 m). It is not a safe zone — the cops follow you right up to the stall.
 
 ## Originality
 
-Every name, character, district, vehicle, story beat, texture, sound and line of code
-is original work made for this bounty. Nothing is taken from Rockstar Games, Grand
-Theft Auto, or any other commercial game. three.js r170 is vendored under
-`game/vendor/three.module.min.js` (MIT).
+Every name, character, district, story beat, texture and sound in Neon Harbor is original, made for this entry. Nothing is taken from any commercial game.
 
----
+## Layout
 
-<sub>Entered on [make.fun](https://make.fun/?utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>
+- `game/index.html` — page, HUD, menus
+- `game/src/config.js` — all tuning numbers and mission definitions
+- `game/src/city.js` — procedural city (roads, buildings, docks, neon)
+- `game/src/world.js` — player, driving, stealing, collisions, camera
+- `game/src/traffic.js` — AI cars and pedestrians
+- `game/src/police.js` — chase AI, foot police, busted rule
+- `game/src/wanted.js` — wanted points/stars state machine
+- `game/src/missions.js` — four-mission state machine
+- `game/src/shop.js` — Gry Market purchase rules
+- `game/src/hud.js` — HUD, minimap, menus, touch controls
+- `game/src/audio.js` — synthesized WebAudio sound
+- `game/src/shots.js` — deterministic screenshot poses (`?shot=`)
+- `main.ts` — entry program, writes `/output/dossier.json`
+- `tests/` — Node regression tests (`node --test tests/`)
+
+## License
+
+MIT — see `LICENSE`.
