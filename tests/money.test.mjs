@@ -329,3 +329,101 @@ test('Mission 4 escape completes at wanted 0 inside the hideout', () => {
   assert.equal(world.state.missionDone, true);
   assert.equal(world.state.player.money, 850); // 50 + 800 reward
 });
+
+// ---- Own-car re-entry (plan 004) ----
+// The game has no parked cars with the empty test layout (they spawn from
+// layout.parkedSpots), so the tests stage cars with exactly makeCar's shape.
+function stageCar(world, fields) {
+  const car = {
+    id: fields.id, x: fields.x, z: fields.z, heading: 0, speed: 0,
+    kind: fields.kind, color: 0xffffff, owned: false,
+    driver: fields.kind === 'traffic', node: null, prev: null,
+    cruise: 0, hitCooldown: 0, stuck: 0,
+  };
+  world.state.cars.push(car);
+  return car;
+}
+
+function pressEnter(world) {
+  world.step(STEP, { ...IDLE, enterPressed: true });
+}
+
+function newMessages(world, before) {
+  return world.state.messages.slice(before);
+}
+
+test('stealing a parked car adds 100 wanted; re-entering it adds 0', () => {
+  const { world } = makeGame();
+  world.state.cars = [];
+  const car = stageCar(world, { id: 9001, x: 40, z: 40, kind: 'parked' });
+  world.placePlayer(40, 40, 0);
+
+  let before = world.state.messages.length;
+  pressEnter(world);
+  assert.equal(world.state.wanted, 100);
+  assert.equal(world.state.playerCar, car);
+  assert.equal(car.owned, true);
+  assert.ok(newMessages(world, before).some((m) => m.includes('Car stolen!')));
+
+  // Exit, then re-enter the same car.
+  pressEnter(world);
+  assert.equal(world.state.player.onFoot, true);
+  assert.equal(world.state.playerCar, null);
+  assert.equal(car.kind, 'parked');
+  assert.equal(world.state.wanted, 100);
+
+  before = world.state.messages.length;
+  pressEnter(world);
+  assert.equal(world.state.wanted, 100);
+  assert.equal(world.state.playerCar, car);
+  assert.equal(newMessages(world, before).some((m) => m.includes('Car stolen!')), false);
+});
+
+test('stealing a traffic car adds 100 wanted; re-entering it adds 0', () => {
+  const { world } = makeGame();
+  world.state.cars = [];
+  const car = stageCar(world, { id: 9002, x: -60, z: 80, kind: 'traffic' });
+  world.placePlayer(-60, 80, 0);
+
+  let before = world.state.messages.length;
+  pressEnter(world);
+  assert.equal(world.state.wanted, 100);
+  assert.equal(world.state.playerCar, car);
+  assert.equal(car.driver, false);
+  assert.equal(car.owned, true);
+  assert.ok(newMessages(world, before).some((m) => m.includes('Car stolen!')));
+
+  pressEnter(world);
+  assert.equal(world.state.player.onFoot, true);
+  assert.equal(world.state.wanted, 100);
+
+  before = world.state.messages.length;
+  pressEnter(world);
+  assert.equal(world.state.wanted, 100);
+  assert.equal(world.state.playerCar, car);
+  assert.equal(newMessages(world, before).some((m) => m.includes('Car stolen!')), false);
+});
+
+test('stealing a different parked car still adds 100 wanted', () => {
+  const { world } = makeGame();
+  world.state.cars = [];
+  const carA = stageCar(world, { id: 9003, x: 40, z: 40, kind: 'parked' });
+  const carB = stageCar(world, { id: 9004, x: -40, z: -40, kind: 'parked' });
+  world.placePlayer(40, 40, 0);
+
+  pressEnter(world);
+  assert.equal(world.state.wanted, 100);
+  assert.equal(world.state.playerCar, carA);
+
+  pressEnter(world); // exit car A
+  assert.equal(world.state.player.onFoot, true);
+
+  world.placePlayer(-40, -40, 0);
+  const before = world.state.messages.length;
+  pressEnter(world);
+  assert.equal(world.state.wanted, 200);
+  assert.equal(world.state.playerCar, carB);
+  assert.equal(carB.owned, true);
+  assert.ok(newMessages(world, before).some((m) => m.includes('Car stolen!')));
+});
+
