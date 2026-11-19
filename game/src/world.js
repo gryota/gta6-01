@@ -671,8 +671,8 @@ export function createWorld(random, layout) {
       // The passenger boards when the player arrives in a car.
       if (state.playerCar && dist2(player.x, player.z, stage.target.x, stage.target.z) < 8 * 8) {
         state.passenger = true;
-        state.missionTimer = 90;
-        msg('Passenger aboard. 90 seconds — go!');
+        state.missionTimer = m.stages[state.missionStage + 1].timer;
+        msg(`Passenger aboard. ${state.missionTimer} seconds — go!`);
         sound('pickup');
         state.missionStage += 1;
       }
@@ -851,7 +851,7 @@ export function createWorld(random, layout) {
     state.missionStage = stage;
     state.missionDone = false;
     state.passenger = index === 2 && stage === 1;
-    if (index === 2 && stage === 1) state.missionTimer = 90;
+    if (index === 2 && stage === 1) state.missionTimer = MISSIONS[index].stages[stage].timer;
   }
 
   reset(null);
