@@ -673,6 +673,10 @@ export function createWorld(random, layout) {
     }
     if (stage.key === 'pickup' || stage.key === 'deliver' || stage.key === 'vault') {
       const target = stage.target;
+      if (m.id === 2 && stage.key === 'deliver' && state.stars >= 5) {
+        failMission('The heat was too much — the package is lost');
+        return;
+      }
       if (dist2(player.x, player.z, target.x, target.z) < 8 * 8) {
         if (stage.key === 'pickup' && m.id === 2) {
           addWanted(WANTED.steal);
