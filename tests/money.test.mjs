@@ -30,6 +30,7 @@ import { createWorld } from '../game/src/world.js';
 import { createShop, SHOP_ITEMS, MAX_BANDAGES } from '../game/src/shop.js';
 import { MISSIONS, BUSTED_FINE, SAVE_KEY, STEP } from '../game/src/config.js';
 import { createRandom } from '../game/src/random.js';
+import { validateSave } from '../game/src/save.js';
 
 // ---- Minimal DOM stub (shop.js only; no game logic is stubbed) ----
 function makeElement() {
@@ -188,4 +189,92 @@ test('busted with $200 takes a $150 fine (current behavior)', () => {
   world.respawn();
   assert.equal(world.state.player.money, 50);
   assert.ok(world.state.messages.some((m) => m.includes('Fine $150')));
+});
+
+// ---- Save validation (plan 002) ----
+
+test('validateSave rejects corrupt saves', () => {
+  const base = { money: 50, missionIndex: 0 };
+  // missionIndex out of range / non-integer
+  assert.equal(validateSave({ ...base, missionIndex: -1 }), null);
+  assert.equal(validateSave({ ...base, missionIndex: 2.5 }), null);
+  assert.equal(validateSave({ ...base, missionIndex: NaN }), null);
+  assert.equal(validateSave({ ...base, missionIndex: 5 }), null);
+  // money non-finite / negative
+  assert.equal(validateSave({ ...base, money: NaN }), null);
+  assert.equal(validateSave({ ...base, money: Infinity }), null);
+  assert.equal(validateSave({ ...base, money: -50 }), null);
+  assert.equal(validateSave({ ...base, money: 'lots' }), null);
+  // bestWanted out of range / non-integer
+  assert.equal(validateSave({ ...base, bestWanted: -1 }), null);
+  assert.equal(validateSave({ ...base, bestWanted: 6 }), null);
+  assert.equal(validateSave({ ...base, bestWanted: 2.5 }), null);
+  // bestMoney non-finite / negative
+  assert.equal(validateSave({ ...base, bestMoney: Infinity }), null);
+  assert.equal(validateSave({ ...base, bestMoney: -1 }), null);
+  // bandages non-integer / negative
+  assert.equal(validateSave({ ...base, bandages: -1 }), null);
+  assert.equal(validateSave({ ...base, bandages: 1.5 }), null);
+  // not an object at all
+  assert.equal(validateSave(null), null);
+  assert.equal(validateSave(undefined), null);
+  assert.equal(validateSave('save'), null);
+  assert.equal(validateSave([50, 0]), null);
+});
+
+test('validateSave accepts legitimate saves unchanged', () => {
+  const minimal = { money: 50, missionIndex: 0 };
+  assert.deepEqual(validateSave(minimal), minimal);
+  const full = { money: 0, missionIndex: 4, bestWanted: 5, bestMoney: 1950, bandages: 3 };
+  assert.deepEqual(validateSave(full), full);
+  // Optional fields may be absent.
+  assert.deepEqual(validateSave({ money: 100, missionIndex: 2 }), { money: 100, missionIndex: 2 });
+});
+
+test('reset clamps a corrupt save instead of crashing', () => {
+  const { world } = makeGame();
+  // Negative money / missionIndex / bestWanted clamp to the valid range.
+  world.reset({ money: -500, missionIndex: -1, bestWanted: -3 });
+  assert.equal(world.state.player.money, 0);
+  assert.equal(world.state.missionIndex, 0);
+  assert.equal(world.state.bestWanted, 0);
+  assert.equal(world.state.missionDone, false);
+
+  // Non-finite money falls back to the default $50; non-integer
+  // missionIndex falls back to 0; bestWanted above 5 clamps to 5.
+  world.reset({ money: NaN, missionIndex: 2.5, bestWanted: 6 });
+  assert.equal(world.state.player.money, 50);
+  assert.equal(world.state.missionIndex, 0);
+  assert.equal(world.state.bestWanted, 5);
+
+  // A valid end-of-story save (missionIndex 4) still loads as done.
+  world.reset({ money: 0, missionIndex: 4, bestWanted: 5, bestMoney: 1950 });
+  assert.equal(world.state.missionIndex, 4);
+  assert.equal(world.state.missionDone, true);
+});
+
+test('busted with negative money takes a $0 fine and never adds money', () => {
+  const { world } = makeGame();
+  world.state.player.money = -500;
+  world.respawn();
+  assert.equal(world.state.player.money, -500);
+  assert.ok(world.state.messages.some((m) => m.includes('Fine $0')));
+});
+
+test('shop refuses purchases on a NaN or Infinity balance', () => {
+  const { world, shop } = makeGame();
+  world.state.player.money = NaN;
+  assert.equal(shop.buy('bandage'), false);
+  assert.ok(Number.isNaN(world.state.player.money));
+  assert.equal(shop.bandages, 0);
+
+  world.state.player.money = Infinity;
+  assert.equal(shop.buy('bandage'), false);
+  assert.equal(world.state.player.money, Infinity);
+  assert.equal(shop.bandages, 0);
+
+  world.state.player.money = -10;
+  assert.equal(shop.buy('bandage'), false);
+  assert.equal(world.state.player.money, -10);
+  assert.equal(shop.bandages, 0);
 });
