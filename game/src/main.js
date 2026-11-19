@@ -13,6 +13,7 @@ import { createAudio } from './audio.js';
 import { createMinimap, createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
 import { createShop } from './shop.js';
 import { stageShot } from './shots.js';
+import { validateSave } from './save.js';
 
 const MAX_FRAME = 0.25;
 
@@ -56,7 +57,7 @@ function readSave() {
     if (!raw) return null;
     const save = JSON.parse(raw);
     if (typeof save.money !== 'number' || typeof save.missionIndex !== 'number') return null;
-    return save;
+    return validateSave(save);
   } catch {
     return null;
   }
