@@ -278,3 +278,54 @@ test('shop refuses purchases on a NaN or Infinity balance', () => {
   assert.equal(world.state.player.money, -10);
   assert.equal(shop.bandages, 0);
 });
+
+// ---- Mission wanted rules (plan 003) ----
+
+const M2_FAIL_MSG = 'The heat was too much — the package is lost';
+const M4_HINT = 'Lose the heat first — get wanted to zero, then reach the hideout.';
+
+test('Mission 2 fails when wanted reaches 5 stars before delivery', () => {
+  const { world } = makeGame();
+  world.setMission(1, 1); // M2 deliver stage (Volt Tower, 0, 40)
+  world.placePlayer(0, 40, 0);
+  world.setWanted(500); // 5 stars
+  world.step(STEP, IDLE);
+  assert.equal(world.state.missionIndex, 1);
+  assert.equal(world.state.missionStage, 0); // restarted from briefing
+  assert.equal(world.state.player.money, 50); // no reward
+  assert.ok(world.state.messages.some((m) => m.includes(M2_FAIL_MSG)));
+});
+
+test('Mission 2 completes below 5 stars', () => {
+  const { world } = makeGame();
+  world.setMission(1, 1);
+  world.placePlayer(0, 40, 0);
+  world.setWanted(0);
+  world.step(STEP, IDLE);
+  assert.equal(world.state.missionIndex, 2);
+  assert.equal(world.state.player.money, 450); // 50 + 400 reward
+});
+
+test('Mission 4 escape stays blocked while hot and the hint shows exactly once', () => {
+  const { world } = makeGame();
+  world.setMission(3, 1); // M4 escape stage (Hideout, -120, -160)
+  world.givePlayerCar(-120, -160, 0, 0);
+  world.setWanted(300); // 3 stars, as after the vault
+  for (let i = 0; i < 5; i += 1) world.step(STEP, IDLE);
+  assert.equal(world.state.missionIndex, 3);
+  assert.equal(world.state.missionStage, 1);
+  assert.ok(world.state.wanted > 0);
+  assert.equal(world.state.escapeHintShown, true);
+  assert.equal(world.state.messages.filter((m) => m === M4_HINT).length, 1);
+});
+
+test('Mission 4 escape completes at wanted 0 inside the hideout', () => {
+  const { world } = makeGame();
+  world.setMission(3, 1);
+  world.givePlayerCar(-120, -160, 0, 0);
+  world.setWanted(0);
+  world.step(STEP, IDLE);
+  assert.equal(world.state.missionIndex, 4);
+  assert.equal(world.state.missionDone, true);
+  assert.equal(world.state.player.money, 850); // 50 + 800 reward
+});
