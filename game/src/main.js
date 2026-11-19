@@ -4,7 +4,7 @@
 //
 // ?seed=N fixes the city. ?shot=start|drive|chase|mission (with &seed=N) stages that
 // scene instead of running the loop, paints it twice and sets window.__shotReady.
-import { MISSIONS, SAVE_KEY, STEP } from './config.js';
+import { BUSTED_FINE, MISSIONS, SAVE_KEY, STEP } from './config.js';
 import { createRandom } from './random.js';
 import { createWorld } from './world.js';
 import { generateLayout } from './city.js';
@@ -204,7 +204,7 @@ function runGame() {
   function showBusted() {
     screen = SCREEN_OVER;
     showScreen('over');
-    const fine = Math.min(world.state.player.money, 150);
+    const fine = Math.min(world.state.player.money, BUSTED_FINE);
     document.getElementById('over-text').textContent =
       `The Neon Harbor police caught Rook. Fine: $${fine}.`;
     announce('Busted.');
