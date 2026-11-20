@@ -1,28 +1,47 @@
-// Save validation — the single gate for save trust (plan 002).
-//
-// Pure module: no DOM, no imports. Any future save field must be added here
-// with its range in the same commit that starts writing it.
-//
-// Valid means ALL of:
-// - save is a non-null object (and not an array);
-// - missionIndex is an integer 0–4 (4 = story done);
-// - money is a finite number >= 0;
-// - if bestWanted is present, it is an integer 0–5;
-// - if bestMoney is present, it is a finite number >= 0;
-// - if bandages is present, it is an integer >= 0 (the shop caps it at 3
-//   on load already — do not cap here, only validate the type/range).
-//
-// Returns the save object unchanged when valid, null when invalid.
+// Neon Harbor — save/load (localStorage). Corrupt saves fall back to defaults.
+export const SAVE_KEY = 'neon-harbor-save-v1';
 
-export function validateSave(save) {
-  if (save === null || typeof save !== 'object' || Array.isArray(save)) return null;
-  if (!Number.isInteger(save.missionIndex) || save.missionIndex < 0 || save.missionIndex > 4) return null;
-  if (typeof save.money !== 'number' || !Number.isFinite(save.money) || save.money < 0) return null;
-  if (save.bestWanted !== undefined
-    && (!Number.isInteger(save.bestWanted) || save.bestWanted < 0 || save.bestWanted > 5)) return null;
-  if (save.bestMoney !== undefined
-    && (typeof save.bestMoney !== 'number' || !Number.isFinite(save.bestMoney) || save.bestMoney < 0)) return null;
-  if (save.bandages !== undefined
-    && (!Number.isInteger(save.bandages) || save.bandages < 0)) return null;
-  return save;
+export function defaultSave() {
+  return { money: 0, unlocked: 1, bandages: 0, bestWanted: 0 };
+}
+
+export function clampSave(s) {
+  const out = defaultSave();
+  if (s && typeof s === 'object') {
+    if (Number.isFinite(s.money)) out.money = Math.max(0, Math.min(999999, Math.floor(s.money)));
+    if (Number.isFinite(s.unlocked)) out.unlocked = Math.max(1, Math.min(5, Math.floor(s.unlocked)));
+    if (Number.isFinite(s.bandages)) out.bandages = Math.max(0, Math.min(3, Math.floor(s.bandages)));
+    if (Number.isFinite(s.bestWanted)) out.bestWanted = Math.max(0, Math.min(5, Math.floor(s.bestWanted)));
+  }
+  return out;
+}
+
+export function encodeSave(s) {
+  return JSON.stringify(clampSave(s));
+}
+
+export function decodeSave(text) {
+  if (typeof text !== 'string' || !text) return defaultSave();
+  try {
+    return clampSave(JSON.parse(text));
+  } catch {
+    return defaultSave();
+  }
+}
+
+export function loadSave(storage) {
+  try {
+    return decodeSave(storage.getItem(SAVE_KEY));
+  } catch {
+    return defaultSave();
+  }
+}
+
+export function storeSave(storage, s) {
+  try {
+    storage.setItem(SAVE_KEY, encodeSave(s));
+    return true;
+  } catch {
+    return false;
+  }
 }

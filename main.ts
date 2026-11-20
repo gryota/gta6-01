@@ -1,16 +1,7 @@
-// Neon Harbor — my own open-world crime game for the make.fun gta6-01 bounty, built
-// in this session: a dusk-lit coastal city of five districts, on-foot and driving play,
-// traffic and pedestrians, stealable cars, a 1–5 star wanted level with police chases,
-// four story missions for the fixer Ms. Vane, melee combat, a HUD with a minimap, a
-// start screen with save/continue, touch controls for phones, and fully synthesized
-// WebAudio sound. three.js r170 is vendored under game/vendor/. The program below
-// (Node 22, standard library only) copies game/ and screenshots/ from beside this file
-// to /output and writes /output/dossier.json with the vendored make.fun library.
-//
-// Serve it locally with `node serve.ts`, then open http://localhost:8080.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-
+// Neon Harbor — entry program (Node 22, stdlib only). Copies game/ and
+// screenshots/ beside this file to /output and writes /output/dossier.json
+// with the vendored make.fun library. Outside the grader, MAKEFUN_OUTPUT_DIR
+// stands in for /output:  mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,10 +15,8 @@ cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of game
-// files, in all, or a path under game/ over 1000 bytes: game/ counts beside /output's own 1000-entry cap, its
-// screenshots/ and dossier.json).
+// Scorer caps: text 163840 bytes; at most 4 screenshots at 256 KiB each;
+// game/ at most 993 files / 48 MiB / 1000-byte paths.
 writeFileSync(
   join(out, 'dossier.json'),
   buildDossier(out, {
