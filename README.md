@@ -1,71 +1,52 @@
-# Neon Harbor
-
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/gryota/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/gryota/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-An original open-world crime game for the make.fun **gta6-01** bounty — "in the spirit
-of GTA 6" with a world that is entirely its own: the dusk-lit coastal city of Neon
-Harbor, five districts (Portside docks, Downtown towers, Old Town, Beachfront, and
-Industrial), and the getaway driver Rook, who owes money to the fixer Ms. Vane.
+# Neon Harbor
 
-## Play
+Open-world crime game untuk bounty make.fun **gta6-01** — kota pesisir fiktif bergaya neon yang bisa dijelajahi dengan jalan kaki dan mengemudi, lengkap dengan lalu lintas, pejalan kaki, wanted level dan polisi, 4 misi berurutan, combat, toko, HUD + minimap, save, dan suara tersintesis. Semua nama, kota, karakter, cerita, art, dan suara adalah karya original — tanpa aset dari game komersial mana pun.
+
+## Cara main
 
 ```sh
 node serve.ts
-# open http://localhost:8080
+# buka http://localhost:8080
 ```
 
-Desktop (keyboard + mouse) and touch phones are both supported — the touch controls
-(virtual joystick, CAR / HIT / RUN / BRAKE buttons, drag to look) appear automatically
-on touch devices.
+Node 22. Tidak ada build step, tidak ada network request saat game jalan — semua file statis di bawah `game/`.
 
-| Input | Action |
-| --- | --- |
-| W A S D / arrows | Walk / drive |
-| Mouse drag | Orbit camera |
-| Shift | Run |
-| E | Enter / exit car (steal parked or traffic cars); open Gry Market near its stall |
-| F | Punch |
-| H | Use a bandage (+50 health) |
-| Space | Handbrake |
-| P / Esc | Pause |
+## Kontrol
 
-## Features
+- **WASD** jalan / mengemudi · **Mouse drag** putar kamera · **Shift** lari
+- **E** masuk/keluar mobil (dan membuka Gry Market di dekat stall)
+- **F** pukul · **H** pakai perban · **Space** handbrake · **Esc** jeda
+- Sentuh HP: joystick virtual + tombol CAR / HIT / RUN / BRAKE
 
-- **Open city**: procedural buildings with lit windows, neon signs, palms, docks with
-  cranes, beach and sea, dusk sky and fog.
-- **On foot and driving**: third-person walking with run, arcade car handling with
-  handbrake drifts, chase camera.
-- **Traffic and pedestrians**: AI cars follow the road grid and slow for the car
-  ahead; pedestrians stroll the sidewalks.
-- **Steal cars**: walk up to a parked or traffic car and press E — the driver bails
-  out and the law notices.
-- **Wanted level 1–5 stars**: police cruisers chase and ram you; foot cops get out
-  and chase you down on foot. Lay low and the heat fades.
-- **Four story missions**: First Gear, Harbor Run, Night Shift (timed fare), and
-  The Vane Job — with briefing, objective markers, a beacon and minimap target, and
-  cash rewards. Mission Passed screen after each one.
-- **Combat**: melee punches on foot, ramming in a car; police fight back.
-- **Gry Market**: a supply stall in the Old Town night market (walk up, press E).
-  Bandages $40 (carry up to 3, press H to heal — the only heal while wanted),
-  energy drinks $25 (+25 health), and police bribes $200 (-1 star, only at
-  1–2 stars with no cop within 30 m). Not a safe zone: the police keep chasing
-  while you shop. Bandage stock is saved with the game.
-- **HUD**: health, cash, bandages, wanted stars, speed, city clock, mission objective, and a
-  live 2D minimap (with a green $ marker for Gry Market).
-- **Save**: money, mission progress and best wanted level persist in localStorage
-  (Continue on the title screen).
-- **Sound**: everything synthesized with WebAudio — engine hum, police siren,
-  pickup chimes, crashes, punches and an ambient pad. No audio files.
+## Cerita
 
-## Originality
+Rook, sopir pelarian, kembali ke Neon Harbor dengan utang pada fixer Ms. Vane. Lunasi lewat empat pekerjaan: curi mobil untuk garasi, antar paket dari dermaga, antar penumpang tepat waktu, dan pekerjaan terakhir — lolos dari polisi menuju hideout.
 
-Every name, character, district, vehicle, story beat, texture, sound and line of code
-is original work made for this bounty. Nothing is taken from Rockstar Games, Grand
-Theft Auto, or any other commercial game. three.js r170 is vendored under
-`game/vendor/three.module.min.js` (MIT).
+## Sistem
 
----
+- **Wanted 1–5 bintang**: naik saat mencuri mobil, menabrak pejalan kaki/mobil/polisi, atau memukul polisi; turun perlahan saat tidak terlihat polisi. Mobil polisi mengejar dan menabrak; polisi jalan kaki muncul dari 2 bintang. Dikepung = BUSTED (denda flat $150).
+- **Gry Market** (Old Town): perban $40, minuman energi $25, suap polisi $200.
+- **Misi**: First Gear $250, Harbor Run $400, Night Shift $500 (timer 90 detik), The Vane Job $800.
+- **Save**: uang, misi terbuka, perban, dan best wanted tersimpan di localStorage.
 
-<sub>Entered on [make.fun](https://make.fun/?utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>
+## Struktur kode
+
+- `game/src/config.js` — konstanta dan angka loop inti
+- `game/src/city.js` — pembangunan kota (tekstur canvas, instancing)
+- `game/src/traffic.js` — mobil AI, pejalan kaki, lampu lalu lintas
+- `game/src/police.js` — AI kejar polisi mobil dan jalan kaki
+- `game/src/world.js` — simulasi dunia (pemain, misi, wanted, toko, save)
+- `game/src/missions.js`, `wanted.js`, `save.js`, `shop.js` — logika murni (diuji unit)
+- `game/src/render.js` — renderer three.js + pabrik mesh
+- `game/src/hud.js` — HUD, minimap, overlay
+- `game/src/input.js`, `audio.js`, `shots.js`, `main.js`
+- `main.ts` — program entry yang menyalin game + screenshot ke /output
+- `tests/` — tes unit (Node), `scripts/check.mjs` — pemeriksaan pra-submit
+
+## Lisensi
+
+MIT — lihat `LICENSE`.
