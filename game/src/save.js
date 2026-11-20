@@ -1,28 +1,47 @@
-// Save validation — the single gate for save trust (plan 002).
-//
-// Pure module: no DOM, no imports. Any future save field must be added here
-// with its range in the same commit that starts writing it.
-//
-// Valid means ALL of:
-// - save is a non-null object (and not an array);
-// - missionIndex is an integer 0–4 (4 = story done);
-// - money is a finite number >= 0;
-// - if bestWanted is present, it is an integer 0–5;
-// - if bestMoney is present, it is a finite number >= 0;
-// - if bandages is present, it is an integer >= 0 (the shop caps it at 3
-//   on load already — do not cap here, only validate the type/range).
-//
-// Returns the save object unchanged when valid, null when invalid.
+// Neon Harbor — save.js
+// localStorage save handling, pure logic (no window access here — the caller
+// passes the raw string in and takes the JSON string out). A corrupt save
+// never crashes the game: it falls back to a fresh start, and every number
+// is clamped into its legal range.
 
-export function validateSave(save) {
-  if (save === null || typeof save !== 'object' || Array.isArray(save)) return null;
-  if (!Number.isInteger(save.missionIndex) || save.missionIndex < 0 || save.missionIndex > 4) return null;
-  if (typeof save.money !== 'number' || !Number.isFinite(save.money) || save.money < 0) return null;
-  if (save.bestWanted !== undefined
-    && (!Number.isInteger(save.bestWanted) || save.bestWanted < 0 || save.bestWanted > 5)) return null;
-  if (save.bestMoney !== undefined
-    && (typeof save.bestMoney !== 'number' || !Number.isFinite(save.bestMoney) || save.bestMoney < 0)) return null;
-  if (save.bandages !== undefined
-    && (!Number.isInteger(save.bandages) || save.bandages < 0)) return null;
-  return save;
+import { SAVE_KEY, MONEY_MAX, SHOP_BANDAGE_MAX } from './config.js';
+
+export const SAVE_KEY_NAME = SAVE_KEY;
+
+export function defaultSave() {
+  return { money: 0, missionIndex: 0, bandages: 0, bestWanted: 0 };
+}
+
+function clampInt(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.floor(n)));
+}
+
+// Parse and validate a saved JSON string. Returns a clean save object.
+export function decodeSave(raw) {
+  const clean = defaultSave();
+  if (typeof raw !== 'string' || raw.length === 0) return clean;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return clean;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return clean;
+  clean.money = clampInt(parsed.money, 0, MONEY_MAX, 0);
+  clean.missionIndex = clampInt(parsed.missionIndex, 0, 4, 0);
+  clean.bandages = clampInt(parsed.bandages, 0, SHOP_BANDAGE_MAX, 0);
+  clean.bestWanted = clampInt(parsed.bestWanted, 0, 5, 0);
+  return clean;
+}
+
+export function encodeSave(save) {
+  const clean = {
+    money: clampInt(save.money, 0, MONEY_MAX, 0),
+    missionIndex: clampInt(save.missionIndex, 0, 4, 0),
+    bandages: clampInt(save.bandages, 0, SHOP_BANDAGE_MAX, 0),
+    bestWanted: clampInt(save.bestWanted, 0, 5, 0),
+  };
+  return JSON.stringify(clean);
 }

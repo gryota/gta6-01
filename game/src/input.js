@@ -1,9 +1,13 @@
-// One input source for desktop and touch. Keyboard + mouse on desktop, a virtual
-// joystick and touch buttons on touch devices. Both feed the same controls object,
-// so the game logic never knows which device is driving it.
-//
-// Touch UI lives in index.html (#touch-ui). It is shown only when the device
-// supports touch (pointer: coarse, or 'ontouchstart', or ?touch=1 for testing).
+// Neon Harbor — input.js
+// Keyboard + mouse + touch, in one place. The world reads a plain state
+// object each frame; edge-triggered actions (enter car, punch, heal) are
+// "pressed" flags the loop clears after reading, so one keypress is one action.
+
+export const ACTION_ENTER = 'enter';
+export const ACTION_PUNCH = 'punch';
+export const ACTION_HEAL = 'heal';
+export const ACTION_PAUSE = 'pause';
+export const ACTION_CONFIRM = 'confirm';
 
 const KEYMAP = {
   KeyW: 'up', ArrowUp: 'up',
@@ -14,222 +18,97 @@ const KEYMAP = {
   Space: 'brake',
 };
 
-export function isTouchDevice() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('touch') === '1') return true;
-    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
-    if ('ontouchstart' in window) return true;
-    return (navigator.maxTouchPoints || 0) > 0;
-  } catch {
-    return false;
-  }
-}
-
 export function createInput(canvas) {
-  const keys = { up: false, down: false, left: false, right: false, run: false, brake: false };
-  const pressed = { enter: false, punch: false, pause: false, confirm: false, heal: false };
-  const camDelta = { x: 0, y: 0 };
+  const held = { up: false, down: false, left: false, right: false, run: false, brake: false };
+  const pressed = { enter: false, punch: false, heal: false, pause: false, confirm: false };
+  const state = {
+    ax: 0, ay: 0, run: false, brake: false,
+    camDX: 0, camDY: 0, // accumulated mouse drag, cleared by the loop
+    touch: false,
+    joyX: 0, joyY: 0, // virtual joystick -1..1
+    touchRun: false, touchBrake: false,
+  };
 
-  // Virtual joystick state (touch): -1..1 on each axis. Forward is -y.
-  const stick = { active: false, id: -1, x: 0, y: 0 };
-  const touchBtn = { run: false, brake: false };
-  const touch = isTouchDevice();
-  if (touch) document.body.classList.add('touch');
-
-  function press(name) { pressed[name] = true; }
-  function onKeyDown(event) {
-    const name = KEYMAP[event.code];
-    if (name) { keys[name] = true; event.preventDefault(); return; }
-    if (event.code === 'KeyE') press('enter');
-    else if (event.code === 'KeyF') press('punch');
-    else if (event.code === 'KeyH') press('heal');
-    else if (event.code === 'KeyP' || event.code === 'Escape') press('pause');
-    else if (event.code === 'Enter') press('confirm');
+  function onKeyDown(e) {
+    if (e.repeat) return;
+    const mapped = KEYMAP[e.code];
+    if (mapped) { held[mapped] = true; e.preventDefault(); return; }
+    if (e.code === 'KeyE') { pressed.enter = true; e.preventDefault(); }
+    if (e.code === 'KeyF') { pressed.punch = true; e.preventDefault(); }
+    if (e.code === 'KeyH') { pressed.heal = true; e.preventDefault(); }
+    if (e.code === 'Escape') { pressed.pause = true; }
+    if (e.code === 'Enter') { pressed.confirm = true; }
   }
-  function onKeyUp(event) {
-    const name = KEYMAP[event.code];
-    if (name) keys[name] = false;
-  }
-  window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('keyup', onKeyUp);
-  window.addEventListener('blur', () => {
-    for (const key of Object.keys(keys)) keys[key] = false;
-    touchBtn.run = false;
-    touchBtn.brake = false;
-  });
 
-  // Mouse: drag on the canvas to orbit the camera; wheel zooms a little.
+  function onKeyUp(e) {
+    const mapped = KEYMAP[e.code];
+    if (mapped) held[mapped] = false;
+  }
+
+  // Mouse drag orbits the camera; it never punches (click is not an attack).
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
-  canvas.addEventListener('pointerdown', (event) => {
-    if (event.pointerType === 'touch') return; // touch drag is handled below
+  function onPointerDown(e) {
+    if (e.pointerType === 'touch') return;
     dragging = true;
-    lastX = event.clientX;
-    lastY = event.clientY;
-    canvas.setPointerCapture(event.pointerId);
-  });
-  canvas.addEventListener('pointermove', (event) => {
-    if (!dragging || event.pointerType === 'touch') return;
-    camDelta.x += event.clientX - lastX;
-    camDelta.y += event.clientY - lastY;
-    lastX = event.clientX;
-    lastY = event.clientY;
-  });
-  function endDrag() { dragging = false; }
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
-  canvas.addEventListener('wheel', (event) => {
-    camDelta.y += Math.sign(event.deltaY) * 12;
-    event.preventDefault();
-  }, { passive: false });
+    lastX = e.clientX;
+    lastY = e.clientY;
+  }
+  function onPointerMove(e) {
+    if (!dragging || e.pointerType === 'touch') return;
+    state.camDX += e.clientX - lastX;
+    state.camDY += e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  }
+  function onPointerUp() { dragging = false; }
 
-  // Touch: drag on the canvas (outside the controls) orbits the camera.
-  let camTouchId = -1;
-  let camLastX = 0;
-  let camLastY = 0;
-  canvas.addEventListener('touchstart', (event) => {
-    for (const t of event.changedTouches) {
-      if (camTouchId === -1) {
-        camTouchId = t.identifier;
-        camLastX = t.clientX;
-        camLastY = t.clientY;
-      }
-    }
-    event.preventDefault();
-  }, { passive: false });
-  canvas.addEventListener('touchmove', (event) => {
-    for (const t of event.changedTouches) {
-      if (t.identifier === camTouchId) {
-        camDelta.x += (t.clientX - camLastX) * 2.2;
-        camDelta.y += (t.clientY - camLastY) * 2.2;
-        camLastX = t.clientX;
-        camLastY = t.clientY;
-      }
-    }
-    event.preventDefault();
-  }, { passive: false });
-  function camTouchEnd(event) {
-    for (const t of event.changedTouches) {
-      if (t.identifier === camTouchId) camTouchId = -1;
-    }
-  }
-  canvas.addEventListener('touchend', camTouchEnd);
-  canvas.addEventListener('touchcancel', camTouchEnd);
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  canvas.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
 
-  // Virtual joystick (left bottom). Knob follows the finger within the base.
-  const stickZone = document.getElementById('stick-zone');
-  const stickBase = document.getElementById('stick-base');
-  const stickKnob = document.getElementById('stick-knob');
-  function stickMove(touch) {
-    const rect = stickBase.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const radius = rect.width / 2;
-    let dx = (touch.clientX - cx) / radius;
-    let dy = (touch.clientY - cy) / radius;
-    const len = Math.hypot(dx, dy);
-    if (len > 1) { dx /= len; dy /= len; }
-    stick.x = dx;
-    stick.y = dy;
-    stickKnob.style.transform = `translate(${dx * 34}px, ${dy * 34}px)`;
-  }
-  function stickReset() {
-    stick.active = false;
-    stick.id = -1;
-    stick.x = 0;
-    stick.y = 0;
-    stickKnob.style.transform = 'translate(0px, 0px)';
-  }
-  if (stickZone) {
-    stickZone.addEventListener('touchstart', (event) => {
-      const t = event.changedTouches[0];
-      stick.active = true;
-      stick.id = t.identifier;
-      stickMove(t);
-      event.preventDefault();
-    }, { passive: false });
-    stickZone.addEventListener('touchmove', (event) => {
-      for (const t of event.changedTouches) {
-        if (t.identifier === stick.id) stickMove(t);
-      }
-      event.preventDefault();
-    }, { passive: false });
-    stickZone.addEventListener('touchend', (event) => {
-      for (const t of event.changedTouches) {
-        if (t.identifier === stick.id) stickReset();
-      }
-    });
-    stickZone.addEventListener('touchcancel', stickReset);
-  }
-
-  // Touch buttons (right bottom): ENTER (E), RUN (hold), PUNCH (F), BRAKE (hold).
-  function wireButton(id, name, hold) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('touchstart', (event) => {
-      event.preventDefault();
-      if (hold) touchBtn[name] = true;
-      else press(name);
-      el.classList.add('active');
-    }, { passive: false });
-    const release = (event) => {
-      if (hold) touchBtn[name] = false;
-      el.classList.remove('active');
-      event.preventDefault();
-    };
-    el.addEventListener('touchend', release);
-    el.addEventListener('touchcancel', release);
-    // The same buttons also work with a mouse (handy to test on desktop).
-    el.addEventListener('mousedown', () => {
-      if (hold) touchBtn[name] = true;
-      else press(name);
-      el.classList.add('active');
-    });
-    el.addEventListener('mouseup', () => {
-      if (hold) touchBtn[name] = false;
-      el.classList.remove('active');
-    });
-    el.addEventListener('mouseleave', () => {
-      if (hold) touchBtn[name] = false;
-      el.classList.remove('active');
-    });
-  }
-  wireButton('btn-enter', 'enter', false);
-  wireButton('btn-punch', 'punch', false);
-  wireButton('btn-run', 'run', true);
-  wireButton('btn-brake', 'brake', true);
-
-  /** Movement axes for this frame: x = strafe right, y = forward. */
-  function axes() {
-    if (stick.active) return { x: stick.x, y: -stick.y };
-    let x = 0;
-    let y = 0;
-    if (keys.up) y += 1;
-    if (keys.down) y -= 1;
-    if (keys.left) x -= 1;
-    if (keys.right) x += 1;
-    return { x, y };
-  }
+  // Touch: the first touch turns the on-screen controls on.
+  window.addEventListener('touchstart', () => { state.touch = true; }, { once: true, passive: true });
 
   return {
-    isTouch: touch,
-    axes,
-    run() { return keys.run || touchBtn.run; },
-    brake() { return keys.brake || touchBtn.brake; },
-    /** Edge-triggered actions; reading clears them. */
-    takePressed(name) {
-      const value = pressed[name];
-      pressed[name] = false;
+    state,
+    held,
+    // Read and clear one edge-triggered action.
+    take(action) {
+      const value = pressed[action];
+      pressed[action] = false;
       return value;
     },
-    /** Camera orbit deltas since last read, in pixels; reading clears them. */
-    takeCamDelta() {
-      const value = { x: camDelta.x, y: camDelta.y };
-      camDelta.x = 0;
-      camDelta.y = 0;
-      return value;
+    // Virtual joystick + touch buttons write here (hud.js calls these).
+    setJoystick(x, y) { state.joyX = x; state.joyY = y; },
+    setTouchButton(name, down) {
+      if (name === 'run') state.touchRun = down;
+      if (name === 'brake') state.touchBrake = down;
+      if (name === 'car' && down) pressed.enter = true;
+      if (name === 'hit' && down) pressed.punch = true;
     },
+    // Poll the held keys into the frame state.
+    poll() {
+      let ax = 0;
+      let ay = 0;
+      if (held.left) ax -= 1;
+      if (held.right) ax += 1;
+      if (held.up) ay += 1;
+      if (held.down) ay -= 1;
+      // The joystick overrides the keys while it is pushed.
+      if (Math.abs(state.joyX) > 0.15 || Math.abs(state.joyY) > 0.15) {
+        ax = state.joyX;
+        ay = -state.joyY;
+      }
+      state.ax = ax;
+      state.ay = ay;
+      state.run = held.run || state.touchRun;
+      state.brake = held.brake || state.touchBrake;
+      return state;
+    },
+    clearCameraDrag() { state.camDX = 0; state.camDY = 0; },
   };
 }

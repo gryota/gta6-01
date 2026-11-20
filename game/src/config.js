@@ -1,129 +1,93 @@
-// Neon Harbor — every tuning number, colour and mission in one place.
-// The city is a road grid: roads run along x = -160,-80,0,80,160 and
-// z = -160,-80,0,80,160. Blocks sit between them. All original names.
+// Neon Harbor — config.js
+// Every tunable number of the game lives here, so the loop rules the brief
+// fixes (wanted points, police counts, mission money, timers) are in one place.
 
 export const STEP = 1 / 60;
 
-export const ROADS = [-160, -80, 0, 80, 160];
-export const ROAD_W = 12;
-export const CITY_HALF = 220;
-export const SEA_X = 235;
+// World layout (metres; x east, z south; forward is -Z, heading 0 faces north).
+export const MAP_HALF = 210;
+export const STREET_PITCH = 52;
+export const STREET_WIDTH = 12;
+export const STREET_LINES = [-156, -104, -52, 0, 52, 104, 156];
 
-export const BLOCK_CENTERS = [-200, -120, -40, 40, 120, 200];
-
-/** District of the block whose centre is (bx, bz). */
-export function districtAt(bx, bz) {
-  if (bx <= -160) return 'portside';
-  if (bx >= 160) return 'beachfront';
-  if (bz <= -160) return 'oldtown';
-  if (bz >= 160) return 'industrial';
-  return 'downtown';
-}
-
-export const DISTRICT_STYLE = {
-  downtown: { minH: 30, maxH: 85, hue: 0x2a3550, windows: 'downtown' },
-  portside: { minH: 8, maxH: 14, hue: 0x4a4038, windows: 'low' },
-  oldtown: { minH: 7, maxH: 15, hue: 0x5a4632, windows: 'low' },
-  beachfront: { minH: 6, maxH: 13, hue: 0x3a4a55, windows: 'low' },
-  industrial: { minH: 9, maxH: 20, hue: 0x45413c, windows: 'mid' },
+// Districts (for the city builder and the minimap).
+export const DISTRICTS = {
+  portside: { x0: -210, z0: -210, x1: -104, z1: 210, name: 'Portside' },
+  downtown: { x0: -104, z0: -104, x1: 104, z1: 104, name: 'Downtown' },
+  oldtown: { x0: 104, z0: -210, x1: 210, z1: -52, name: 'Old Town' },
+  beachfront: { x0: -104, z0: 104, x1: 210, z1: 210, name: 'Beachfront' },
+  industrial: { x0: 104, z0: -52, x1: 210, z1: 104, name: 'Industrial' },
 };
 
-export const PLAYER = {
-  walkSpeed: 4.2,
-  runSpeed: 7.5,
-  radius: 0.7,
-  health: 100,
-  punchRange: 2.6,
-  punchDamage: 34,
-  punchCooldown: 0.45,
-};
+// Landmarks the missions and the shop point at.
+export const GARAGE = { x: 52, z: 104, name: 'Garage' };
+export const HIDEOUT = { x: -170, z: 160, name: 'Hideout' };
+export const DOCKS_PICKUP = { x: -180, z: 0, name: 'Portside docks' };
+export const BEACH_PICKUP = { x: 0, z: 170, name: 'Beachfront' };
+export const DOWNTOWN_DROP = { x: 0, z: -60, name: 'Downtown' };
+export const SHOP_POS = { x: 150, z: -130, name: 'Gry Market' };
+export const PLAYER_SPAWN = { x: 0, z: 30, heading: 0 };
 
-export const CAR = {
-  accel: 15,
-  brake: 26,
-  reverseAccel: 10,
-  topSpeed: 27,
-  reverseTop: 9,
-  steerRate: 2.1,
-  radius: 2.1,
-  length: 4.4,
-};
+// Wanted: points 0-500, 100 points = 1 star.
+export const WANTED_MAX = 500;
+export const WANTED_PER_STAR = 100;
+export const WANTED_DECAY_PER_SEC = 6;
+export const WANTED_DECAY_CLEAR_RADIUS = 45;
+export const POINTS_STEAL = 100;
+export const POINTS_HIT_PEDESTRIAN = 80;
+export const POINTS_HIT_CAR = 30;
+export const POINTS_HIT_POLICE_CAR = 60;
+export const POINTS_PUNCH_POLICE = 150;
 
-export const TRAFFIC_COUNT = 10;
-export const PED_COUNT = 24;
-export const PARKED_COUNT = 8;
+// Police.
+export const POLICE_CAR_SPEED_NEAR = 21;
+export const POLICE_CAR_SPEED_FAR = 17;
+export const POLICE_CAR_NEAR_DIST = 60;
+export const FOOT_POLICE_MIN_STARS = 2;
+export const FOOT_POLICE_MAX = 3;
+export const FOOT_POLICE_SPAWN_SEC = 4;
+export const FOOT_POLICE_SPEED = 4.2;
+export const SURROUNDED_COUNT = 2;
+export const SURROUNDED_RADIUS = 3;
+export const SURROUNDED_SEC = 2.5;
 
-export const WANTED = {
-  steal: 100,
-  hitPed: 80,
-  hitCar: 30,
-  hitCop: 150,
-  decayPerSec: 6,
-  maxPoints: 500,
-  pointsPerStar: 100,
-};
-
-export const MISSIONS = [
-  {
-    id: 1,
-    name: 'First Gear',
-    brief: 'Ms. Vane wants a car. Any car. Steal one and bring it to the garage in Industrial.',
-    stages: [
-      { key: 'steal', text: 'Steal a car (walk up to one and press E)', target: null },
-      { key: 'deliver', text: 'Drive the car to Rook\'s Garage in Industrial', target: { x: 150, z: 160, label: 'Garage' } },
-    ],
-    reward: 250,
-  },
-  {
-    id: 2,
-    name: 'Harbor Run',
-    brief: 'A package is waiting at Pier 9 in Portside. Grab it and drop it downtown. The harbour crew will not like it.',
-    stages: [
-      { key: 'pickup', text: 'Pick up the package at Pier 9, Portside', target: { x: -160, z: -40, label: 'Pier 9' } },
-      { key: 'deliver', text: 'Deliver the package to the Volt Tower, Downtown', target: { x: 0, z: 40, label: 'Volt Tower' } },
-    ],
-    reward: 400,
-  },
-  {
-    id: 3,
-    name: 'Night Shift',
-    brief: 'A fare is waiting at the corner of 80th and Marina. Get them to Palm Court on Beachfront before the meter runs out.',
-    stages: [
-      { key: 'pickup', text: 'Pick up the passenger at 80th & Marina', target: { x: 80, z: -80, label: 'Passenger' } },
-      { key: 'deliver', text: 'Drop the passenger at Palm Court, Beachfront — 90 seconds!', target: { x: 160, z: 80, label: 'Palm Court' }, timer: 90 },
-    ],
-    reward: 500,
-  },
-  {
-    id: 4,
-    name: 'The Vane Job',
-    brief: 'The last one. Hit the vault under Volt Tower, then lose the heat and reach the hideout in Old Town. After this, Rook is free.',
-    stages: [
-      { key: 'vault', text: 'Reach the vault under Volt Tower, Downtown', target: { x: 0, z: -80, label: 'Vault' } },
-      { key: 'escape', text: 'Lose the cops, then reach the hideout in Old Town', target: { x: -120, z: -160, label: 'Hideout' } },
-    ],
-    reward: 800,
-  },
-];
-
+// Player.
+export const HEALTH_MAX = 100;
+export const DAMAGE_CRASH = 4;
+export const DAMAGE_POLICE_RAM = 6;
+export const DAMAGE_POLICE_PUNCH = 8;
+export const REGEN_PER_SEC = 3;
+export const WALK_SPEED = 5;
+export const RUN_SPEED = 8.5;
+export const CAR_TOP_SPEED = 26;
+export const CAR_ACCEL = 14;
+export const CAR_BRAKE = 26;
+export const CAR_STEER = 1.9;
 export const BUSTED_FINE = 150;
-export const SAFEHOUSE = { x: 40, z: 40 };
 
-export const PALETTE = {
-  sky: 0x2c1740,
-  fog: 0x35204e,
-  ground: 0x23232c,
-  road: 0x2e2e38,
-  sidewalk: 0x3d3d48,
-  sand: 0xc2a878,
-  sea: 0x0b2f4a,
-  neonCyan: 0x29e6ff,
-  neonPink: 0xff2e88,
-  neonYellow: 0xffd23e,
-  text: '#eef1f5',
-  muted: '#9aa3b5',
-};
+// Missions.
+export const MISSION_REWARDS = [250, 400, 500, 800];
+export const MISSION_TOTAL = 1950;
+export const MISSION_3_TIME_LIMIT = 90;
+export const MISSION_FAIL_WANTED_STARS = 5;
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+// Shop — Gry Market (Old Town night market).
+export const SHOP_BANDAGE_PRICE = 40;
+export const SHOP_DRINK_PRICE = 25;
+export const SHOP_BRIBE_PRICE = 200;
+export const SHOP_BANDAGE_MAX = 3;
+export const SHOP_BANDAGE_HEAL = 50;
+export const SHOP_DRINK_HEAL = 25;
+export const SHOP_BRIBE_MIN_STARS = 1;
+export const SHOP_BRIBE_MAX_STARS = 2;
+export const SHOP_BRIBE_CLEAR_RADIUS = 30;
+export const SHOP_INTERACT_RADIUS = 4;
 
-export const SAVE_KEY = 'neon-harbor.save.v1';
+// Traffic.
+export const TRAFFIC_CARS = 10;
+export const PEDESTRIANS = 24;
+export const TRAFFIC_SPEED = 9;
+
+// Save.
+export const SAVE_KEY = 'neon-harbor-save-v1';
+export const MONEY_MAX = 999999;
